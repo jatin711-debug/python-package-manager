@@ -1,6 +1,0 @@
-{
-  "packages": {
-    "numpy": "latest",
-    "pandas": "latest"
-  }
-}
