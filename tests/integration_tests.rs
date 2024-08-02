@@ -40,13 +40,13 @@ fn test_save_packages() {
 #[test]
 fn test_install_package() {
     let dir = tempdir().expect("Failed to create temp dir");
-    let file_path = dir.path().join("requirements.json");
+    let file_path: std::path::PathBuf = dir.path().join("requirements.json");
     fs::write(&file_path, "{}").expect("Failed to write to temp file");
     let mut packages = PackageRegistry::new();
-    install_package("pandas", Some("1.0.0"), &mut packages);
+    install_package("pandas", Some("latest"), &mut packages);
     save_packages_to_path(&packages, &file_path);
     let updated_packages = load_packages_from_path(&file_path);
-    assert_eq!(updated_packages.packages.get("pandas").unwrap(), "1.0.0");
+    assert_eq!(updated_packages.packages.get("pandas").unwrap(), "latest");
 }
 
 #[test]
