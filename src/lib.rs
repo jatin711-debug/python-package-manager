@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::process::Command;
+use std::path::Path;
 
 #[derive(Parser)]
 #[command(name = "Python Package Manager")]
@@ -35,7 +35,11 @@ impl PackageRegistry {
 }
 
 pub fn load_packages() -> PackageRegistry {
-    if let Ok(data) = fs::read_to_string("requirements.json") {
+    load_packages_from_path(Path::new("requirements.json"))
+}
+
+pub fn load_packages_from_path(path: &Path) -> PackageRegistry {
+    if let Ok(data) = fs::read_to_string(path) {
         serde_json::from_str(&data).unwrap_or_else(|_| PackageRegistry::new())
     } else {
         PackageRegistry::new()
@@ -43,11 +47,23 @@ pub fn load_packages() -> PackageRegistry {
 }
 
 pub fn save_packages(packages: &PackageRegistry) {
-    let data = serde_json::to_string_pretty(packages).expect("Failed to serialize packages");
-    fs::write("requirements.json", data).expect("Failed to write requirements.json");
+    save_packages_to_path(packages, Path::new("requirements.json"))
 }
 
+pub fn save_packages_to_path(packages: &PackageRegistry, path: &Path) {
+    let data = serde_json::to_string_pretty(packages).expect("Failed to serialize packages");
+    fs::write(path, data).expect("Failed to write requirements.json");
+}
+
+#[cfg(test)]
+pub fn run_command(_command: &str) -> bool {
+    true // Mock implementation always returns success
+}
+
+#[cfg(not(test))]
 pub fn run_command(command: &str) -> bool {
+    use std::process::Command;
+
     if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", command])
