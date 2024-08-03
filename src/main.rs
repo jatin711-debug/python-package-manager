@@ -1,30 +1,29 @@
 use clap::Parser;
-use python_package_manager::{Cli, Commands, load_packages, save_packages, install_package, delete_package, update_package, list_packages, install_from_requirements};
+use python_package_manager::{Cli, Commands, load_packages, save_packages, install_packages, delete_package, update_package, list_packages, install_from_requirements};
 
 fn main() {
     let args = Cli::parse();
-    let mut packages = load_packages();
+    let mut package_registry = load_packages();
 
     match args.command {
-        Commands::Install { name, version, requirements } => {
-            if let Some(requirements) = requirements {
-                install_from_requirements(&requirements, &mut packages);
-            } else if let Some(name) = name {
-                install_package(&name, version.as_deref(), &mut packages);
+        Commands::Install { packages } => {
+            if packages.len() == 1 && packages[0].starts_with("-r=") {
+                let requirements_path = &packages[0][3..];
+                install_from_requirements(requirements_path, &mut package_registry);
             } else {
-                println!("You must specify a package name or a requirements file.");
+                install_packages(&packages, &mut package_registry);
             }
         }
         Commands::Delete { name } => {
-            delete_package(&name, &mut packages);
+            delete_package(&name, &mut package_registry);
         }
         Commands::Update { name, version } => {
-            update_package(&name, &version, &mut packages);
+            update_package(&name, &version, &mut package_registry);
         }
         Commands::List => {
-            list_packages(&packages);
+            list_packages(&package_registry);
         }
     }
 
-    save_packages(&packages);
+    save_packages(&package_registry);
 }
