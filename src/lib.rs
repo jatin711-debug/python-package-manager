@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::process::Command;
 use std::path::Path;
 
 #[derive(Parser)]
@@ -15,7 +16,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    Install { name: Option<String>, version: Option<String>, requirements: Option<String> },
+    Install { packages: Vec<String> },
     Delete { name: String },
     Update { name: String, version: String },
     List,
@@ -62,8 +63,6 @@ pub fn run_command(_command: &str) -> bool {
 
 #[cfg(not(test))]
 pub fn run_command(command: &str) -> bool {
-    use std::process::Command;
-
     if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", command])
@@ -80,18 +79,15 @@ pub fn run_command(command: &str) -> bool {
     }
 }
 
-pub fn install_package(name: &str, version: Option<&str>, packages: &mut PackageRegistry) {
-    let version = version.unwrap_or("latest");
-    let install_command = if version == "latest" {
-        format!("pip install {}", name)
-    } else {
-        format!("pip install {}=={}", name, version)
-    };
-    if run_command(&install_command) {
-        packages.packages.insert(name.to_string(), version.to_string());
-        println!("Package {} installed successfully", name);
-    } else {
-        println!("Failed to install package {}", name);
+pub fn install_packages(package_names: &[String], packages: &mut PackageRegistry) {
+    for name in package_names {
+        let install_command = format!("pip install {}", name);
+        if run_command(&install_command) {
+            packages.packages.insert(name.clone(), "latest".to_string());
+            println!("Package {} installed successfully", name);
+        } else {
+            println!("Failed to install package {}", name);
+        }
     }
 }
 
@@ -118,7 +114,13 @@ pub fn install_from_requirements(requirements: &str, packages: &mut PackageRegis
     if let Ok(data) = fs::read_to_string(requirements) {
         if let Ok(registry) = serde_json::from_str::<PackageRegistry>(&data) {
             for (name, version) in registry.packages {
-                install_package(&name, Some(&version), packages);
+                let install_command = format!("pip install {}=={}", name, version);
+                if run_command(&install_command) {
+                    packages.packages.insert(name.clone(), version.clone());
+                    println!("Package {} installed successfully", name);
+                } else {
+                    println!("Failed to install package {}", name);
+                }
             }
         } else {
             println!("Failed to parse the requirements file.");
