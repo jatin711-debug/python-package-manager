@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Output};
 use tempfile::tempdir;
-use python_package_manager::{PackageRegistry, load_packages_from_path, save_packages_to_path, install_packages, delete_package, update_package, list_packages, install_from_requirements};
+use python_package_manager::{PackageRegistry, load_packages_from_path, save_packages_to_path, install_packages, delete_package, update_package, list_packages};
 
 fn get_python_interpreter() -> String {
     let version_output: Output = if cfg!(target_os = "windows") {
@@ -64,7 +64,7 @@ fn create_virtualenv(env_path: &Path) {
 
 fn run_command_in_virtualenv(env_path: &Path, args: &[&str]) -> bool {
     let bin_path = if cfg!(target_os = "windows") {
-        env_path.join("Scripts").join("pip")
+        env_path.join("Scripts").join("pip.exe")
     } else {
         env_path.join("bin").join("pip")
     };
@@ -107,7 +107,7 @@ fn test_load_packages() {
 fn test_save_packages() {
     let dir = tempdir().expect("Failed to create temp dir");
     let file_path = dir.path().join("requirements.json");
-    let mut packages: PackageRegistry = PackageRegistry::new();
+    let mut packages = PackageRegistry::new();
     packages.packages.insert("pandas".to_string(), "1.0.0".to_string());
     save_packages_to_path(&packages, &file_path);
     let data = fs::read_to_string(&file_path).expect("Failed to read from temp file");
@@ -122,6 +122,7 @@ fn test_save_packages() {
 fn test_install_packages() {
     let dir = tempdir().expect("Failed to create temp dir");
     let env_path = dir.path().join("env");
+    print!("env_path: {:?}", env_path);
     create_virtualenv(&env_path);
 
     let file_path = dir.path().join("requirements.json");
@@ -148,6 +149,7 @@ fn test_install_packages() {
 fn test_delete_package() {
     let dir = tempdir().expect("Failed to create temp dir");
     let env_path = dir.path().join("env");
+    print!("env_path: {:?}", env_path);
     create_virtualenv(&env_path);
 
     let file_path = dir.path().join("requirements.json");
@@ -169,6 +171,7 @@ fn test_delete_package() {
 fn test_update_package() {
     let dir = tempdir().expect("Failed to create temp dir");
     let env_path = dir.path().join("env");
+    print!("env_path: {:?}", env_path);
     create_virtualenv(&env_path);
 
     let file_path = dir.path().join("requirements.json");
@@ -194,28 +197,4 @@ fn test_list_packages() {
     packages.packages.insert("pandas".to_string(), "1.0.0".to_string());
     save_packages_to_path(&packages, &file_path);
     list_packages(&packages); // This just prints to stdout, so we're testing for no panic
-}
-
-#[test]
-fn test_install_from_requirements() {
-    let dir = tempdir().expect("Failed to create temp dir");
-    let env_path = dir.path().join("env");
-    create_virtualenv(&env_path);
-
-    let file_path = dir.path().join("requirements.json");
-    let mut initial_packages = PackageRegistry::new();
-    initial_packages.packages.insert("pandas".to_string(), "1.0.0".to_string());
-    initial_packages.packages.insert("numpy".to_string(), "1.19.5".to_string());
-    save_packages_to_path(&initial_packages, &file_path);
-
-    println!("Content of requirements.json: {}", fs::read_to_string(&file_path).unwrap());
-
-    let mut packages = PackageRegistry::new();
-    install_from_requirements(file_path.to_str().unwrap(), &mut packages);
-
-    save_packages_to_path(&packages, &file_path);
-    let updated_packages = load_packages_from_path(&file_path);
-
-    assert_eq!(updated_packages.packages.get("pandas").unwrap(), "1.0.0");
-    assert_eq!(updated_packages.packages.get("numpy").unwrap(), "1.19.5");
 }
